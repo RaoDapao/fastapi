@@ -30,10 +30,10 @@ if __name__ == "__main__":
     client = ApiClient("http://192.168.20.180:8000")
     #之后如果需要可以使用不同的端口运行不同的模型，现在只有一个qwen2
     # 定义请求参数
-    system_setting = "你"
-    user_prompt = '易'
+    system_setting = "你是取名字的专家，取男名，王姓"
+    user_prompt = '易经 楚辞 诗经里各找4个冷门句子有美好寓意的，谦逊之意，五行需要水支援，缩写成两个字'
 
-    max_tokens = 5
+    max_tokens = 500
     
     # 调用API并获取响应
 
