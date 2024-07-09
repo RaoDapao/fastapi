@@ -1,5 +1,7 @@
 import torch
 import time
+import warnings
+import multiprocessing
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from transformers import AutoTokenizer
@@ -39,6 +41,8 @@ async def generate_response(data: RequestData):
     model_inputs = tokenizer([text], return_tensors="pt").to("xpu")
 
     try:
+        torch.cuda.empty_cache()  # 清理显存
+
         # Warmup generation
         _ = model.generate(model_inputs.input_ids, max_new_tokens=data.max_tokens)
 
@@ -47,6 +51,8 @@ async def generate_response(data: RequestData):
         generated_ids = model.generate(model_inputs.input_ids, max_new_tokens=data.max_tokens)
         torch.xpu.synchronize()
         end = time.time()
+
+        torch.cuda.empty_cache()  # 清理显存
 
         generated_ids = generated_ids.cpu()
         generated_ids = [
@@ -60,12 +66,20 @@ async def generate_response(data: RequestData):
             "response": response
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"An error occurred during response generation: {str(e)}")
 
 @app.on_event("shutdown")
 def shutdown_event():
     # Properly clean up resources if necessary
-    pass
+    for proc in multiprocessing.active_children():
+        proc.terminate()
+    multiprocessing.active_children()
+    # If using any custom resources, add their cleanup logic here
+    # Example: closing database connections, releasing file handles, etc.
+
+# Suppress specific warnings
+warnings.filterwarnings("ignore", message="Initializing zero-element tensors is a no-op")
+warnings.filterwarnings("ignore", message="There appear to be .* leaked semaphore objects")
 
 # Run the FastAPI app
 if __name__ == "__main__":
