@@ -34,12 +34,23 @@ def format_memory_size(size_in_bytes):
         size_in_bytes /= 1024
     return f"{size_in_bytes:.2f} PB"
 
-def print_and_store_result(result, total_xpu_memory, output_file):
-    current_memory = result['xpu_memory_usage'].get('allocated_bytes.all.current', 0)
-    peak_memory = result['xpu_memory_usage'].get('allocated_bytes.all.peak', 0)
+def print_and_store_result(result, output_file):
+    def format_memory_info(memory_info):
+        return {
+            "total_memory": format_memory_size(memory_info["total_memory"]),
+            "available_memory": format_memory_size(memory_info["available_memory"]),
+            "allocated_current": format_memory_size(memory_info["memory_stats"].get("allocated_bytes.all.current", 0)),
+            "allocated_peak": format_memory_size(memory_info["memory_stats"].get("allocated_bytes.all.peak", 0))
+        }
+    
+    initial_memory = format_memory_info(result['xpu_memory_usage_initial'])
+    warmup_memory = format_memory_info(result['xpu_memory_usage_warmup'])
+    before_generation_memory = format_memory_info(result['xpu_memory_usage_before_generation'])
+    after_generation_memory = format_memory_info(result['xpu_memory_usage_after_generation'])
+    final_memory = format_memory_info(result['xpu_memory_usage_final'])
 
     output_data = {
-        "inference_time": result['inference_time'],
+        "inference_time": f"{result['inference_time']:.2f} s",
         "response": result['response'],
         "input_tokens": result['input_tokens'],
         "memory_usage": {
@@ -50,8 +61,11 @@ def print_and_store_result(result, total_xpu_memory, output_file):
             "free": format_memory_size(result['memory_usage']['free'])
         },
         "xpu_memory_usage": {
-            "allocated_bytes_all_current": format_memory_size(current_memory),
-            "allocated_bytes_all_peak": format_memory_size(peak_memory)
+            "initial": initial_memory,
+            "warmup": warmup_memory,
+            "before_generation": before_generation_memory,
+            "after_generation": after_generation_memory,
+            "final": final_memory
         }
     }
     
@@ -65,10 +79,9 @@ if __name__ == "__main__":
     client = ApiClient("http://192.168.20.180:8000")
     
     # 定义请求参数
-    system_setting = "扮演老教授，经常给出markdown格式的数学公式来解决问题"
-    user_prompt = '什么是随机svd,给出数学的严格证明,证明为啥有效，同时给出python代码来实现'
-    max_tokens = 2000
-    total_xpu_memory = 16 * 1024 * 1024 * 1024  # 16GB 假设总的XPU显存为16GB
+    system_setting = "我"
+    user_prompt = '你'
+    max_tokens = 150
     output_file = "api_results.json"
 
     if os.path.exists(output_file):
@@ -76,9 +89,9 @@ if __name__ == "__main__":
     
     # 调用API并获取响应
     for i in range(7):
-        result = client.generate_response(system_setting, user_prompt, max_tokens)
+        result = client.generate_response(system_setting*15*i, user_prompt*5*i, max_tokens*i)
         
         if result:
-            print_and_store_result(result, total_xpu_memory, output_file)
+            print_and_store_result(result, output_file)
         else:
             print("Failed to get a response from the API.")
