@@ -28,40 +28,31 @@ class RequestData(BaseModel):
 
 @app.post("/generate-response/")
 async def generate_response(data: RequestData):
-    try:
-        messages = [
-            {"role": "system", "content": data.system_setting},
-            {"role": "user", "content": data.user_prompt}
-        ]
+    messages = [
+        {"role": "system", "content": data.system_setting},
+        {"role": "user", "content": data.user_prompt}
+    ]
 
-        text = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-        model_inputs = tokenizer([text], return_tensors="pt").to("xpu")
-        
-        # Warmup generation
-        model.generate(model_inputs.input_ids, max_new_tokens=data.max_tokens)
+    text = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+    model_inputs = tokenizer([text], return_tensors="pt").to("xpu")
+    
+    # Warmup generation
+    model.generate(model_inputs.input_ids, max_new_tokens=data.max_tokens)
 
-        # Actual generation with timing
-        st = time.time()
-        generated_ids = model.generate(model_inputs.input_ids, max_new_tokens=data.max_tokens)
-        torch.xpu.synchronize()
-        end = time.time()
+    # Actual generation with timing
+    st = time.time()
+    generated_ids = model.generate(model_inputs.input_ids, max_new_tokens=data.max_tokens)
+    torch.xpu.synchronize()
+    end = time.time()
 
-        generated_ids = generated_ids.cpu()
-        generated_ids = [
-            output_ids[len(input_ids):] for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)
-        ]
-        response = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
-        inference_time = end - st
+    generated_ids = generated_ids.cpu()
+    generated_ids = [
+        output_ids[len(input_ids):] for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)
+    ]
+    response = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
+    inference_time = end - st
 
-        return {
-            "inference_time": inference_time,
-            "response": response
-        }
-    except ValueError as e:
-        error_message = f"Input processing error: {str(e)}"
-        print(error_message)
-        raise ValueError(error_message)
-    except Exception as e:
-        error_message = f"Unexpected error: {str(e)}"
-        print(error_message)
-        raise RuntimeError(error_message)
+    return {
+        "inference_time": inference_time,
+        "response": response
+    }
