@@ -22,7 +22,7 @@ except Exception as e:
 class RequestData(BaseModel):
     system_setting: str
     user_prompt: str
-    max_tokens: int = 32  # Default max tokens to predict
+    max_tokens: int =   # Default max tokens to predict
 
 @app.post("/generate-response/")
 async def generate_response(data: RequestData):
