@@ -4,6 +4,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from transformers import AutoTokenizer
 from ipex_llm.transformers import AutoModelForCausalLM
+import psutil
 
 app = FastAPI()
 
@@ -28,6 +29,9 @@ class RequestData(BaseModel):
 
 @app.post("/generate-response/")
 async def generate_response(data: RequestData):
+    # Clear memory before processing the request
+    torch.xpu.empty_cache()
+    
     messages = [
         {"role": "system", "content": data.system_setting},
         {"role": "user", "content": data.user_prompt}
@@ -52,7 +56,20 @@ async def generate_response(data: RequestData):
     response = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
     inference_time = end - st
 
+    # Monitor memory usage
+    mem_info = psutil.virtual_memory()
+    xpu_memory_info = torch.xpu.memory_stats()
+
     return {
         "inference_time": inference_time,
-        "response": response
+        "response": response,
+        "input_tokens": len(model_inputs.input_ids[0]),
+        "memory_usage": {
+            "total": mem_info.total,
+            "available": mem_info.available,
+            "percent": mem_info.percent,
+            "used": mem_info.used,
+            "free": mem_info.free
+        },
+        "xpu_memory_usage": xpu_memory_info
     }

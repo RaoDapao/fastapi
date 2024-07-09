@@ -5,7 +5,7 @@ class ApiClient:
         self.base_url = base_url
         self.endpoint = "/generate-response/"
     
-    def generate_response(self, system_setting, user_prompt, max_tokens=32):
+    def generate_response(self, system_setting, user_prompt, max_tokens=1000):
         url = self.base_url + self.endpoint
         data = {
             "system_setting": system_setting,
@@ -28,12 +28,12 @@ class ApiClient:
 # 使用示例
 if __name__ == "__main__":
     client = ApiClient("http://192.168.20.180:8000")
-    #之后如果需要可以使用不同的端口运行不同的模型，现在只有一个qwen2
+    
     # 定义请求参数
-    system_setting = "你是取名字的专家，取男名，王姓"
-    user_prompt = '易经 楚辞 诗经里各找4个冷门句子有美好寓意的，谦逊之意，五行需要水支援，缩写成两个字'
+    system_setting = "随便扯扯"
+    user_prompt = '随便扯扯随便扯扯随便扯扯随便扯扯随便扯扯随便扯扯随便扯扯随便扯扯随便扯扯随便扯扯随便'
 
-    max_tokens = 500
+    max_tokens = 1000
     
     # 调用API并获取响应
 
@@ -43,3 +43,14 @@ if __name__ == "__main__":
         if result:
             print(f"Inference time: {result['inference_time']} s")
             print(f"Response: {result['response']}")
+            print(f"Input Tokens: {result['input_tokens']}")
+            print("Memory Usage:")
+            print(f"  Total: {result['memory_usage']['total']}")
+            print(f"  Available: {result['memory_usage']['available']}")
+            print(f"  Percent: {result['memory_usage']['percent']}%")
+            print(f"  Used: {result['memory_usage']['used']}")
+            print(f"  Free: {result['memory_usage']['free']}")
+            print("XPU Memory Usage:")
+            print(result['xpu_memory_usage'])
+        else:
+            print("Failed to get a response from the API.")
