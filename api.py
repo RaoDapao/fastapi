@@ -17,7 +17,7 @@ def load_model_and_tokenizer(model_path):
                                                  load_in_4bit=True,
                                                  optimize_model=True,
                                                  trust_remote_code=True,
-                                                 use_cache=True).to("xpu")
+                                                 use_cache=True,replace_embedding=True).to("xpu")
     tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True,replace_embedding=True)
     return model, tokenizer
 
