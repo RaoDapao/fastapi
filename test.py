@@ -46,7 +46,7 @@ if __name__ == "__main__":
     
     # 定义请求参数
     system_setting = "我"
-    user_prompt = '你他死了吗？'
+    user_prompt = '你'
     max_tokens = 206
     output_file = "api_results.json"
 
@@ -54,8 +54,8 @@ if __name__ == "__main__":
         os.remove(output_file)  # 删除现有文件，以便每次运行时创建一个新文件
     
     # 调用API并获取响应
-    for i in range(17, 18):
-        result = client.generate_response(system_setting *10*i, user_prompt * i, max_tokens * i)
+    for i in range(1, 2):
+        result = client.generate_response(system_setting *50, user_prompt , max_tokens * i)
         
         if result:
             print_and_store_result(result, output_file)

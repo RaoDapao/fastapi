@@ -12,6 +12,8 @@ app = FastAPI()
 # Load model and tokenizer at startup
 model_path = "/home/qwen_intel/code/models/qwen2"
 
+
+
 def load_model_and_tokenizer(model_path):
     print("Loading model and tokenizer...")  # Debug print
     model = AutoModelForCausalLM.from_pretrained(
@@ -21,6 +23,7 @@ def load_model_and_tokenizer(model_path):
         trust_remote_code=True,
         use_cache=True, 
         device_map="auto",
+        max_memory={0: "15GB"},  # 为 XPU 设置最大内存使用量    
     ).to("xpu")
     print("Model loaded.")  # Debug print
     tokenizer = AutoTokenizer.from_pretrained(
@@ -66,6 +69,7 @@ async def generate_response(data: RequestData):
     # Actual generation with timing
     try:
         print("Starting actual generation...")  # Debug print
+        torch.xpu.empty_cache()
         st = time.time()
         generated_ids = model.generate(model_inputs.input_ids, max_new_tokens=data.max_tokens)
         torch.xpu.synchronize()
@@ -101,6 +105,8 @@ async def generate_response(data: RequestData):
             },
             "xpu_memory_usage": xpu_memory_info,
         }
+    
+        
     except Exception as e:
         print("Error during actual generation: ", str(e))  # Debug print
         raise HTTPException(status_code=500, detail="Generation failed: " + str(e))
