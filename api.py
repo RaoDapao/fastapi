@@ -5,9 +5,12 @@ from pydantic import BaseModel
 from transformers import AutoTokenizer
 from ipex_llm.transformers import AutoModelForCausalLM
 import psutil
+import os
+
+# Disable integrated GPU
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
 app = FastAPI()
-
 
 # Load model and tokenizer at startup
 model_path = "/home/qwen_intel/code/models/qwen2"
@@ -73,3 +76,8 @@ async def generate_response(data: RequestData):
         },
         "xpu_memory_usage": xpu_memory_info,
     }
+
+# Run the app
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
