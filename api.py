@@ -21,7 +21,6 @@ def load_model_and_tokenizer(model_path):
         trust_remote_code=True,
         use_cache=True, 
         device_map="auto",
-        torch_dtype=torch.float16
     ).to("xpu")
     print("Model loaded.")  # Debug print
     tokenizer = AutoTokenizer.from_pretrained(
