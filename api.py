@@ -9,7 +9,10 @@ import psutil
 app = FastAPI()
 
 # Load model and tokenizer at startup
-model_path = "/home/qwen_intel/code/models/Qwen2-1.5B-Instruct-FP8"
+model_path = "/home/qwen_intel/code/models/qwen2"
+
+# Record memory usage before loading the model
+initial_xpu_memory_info = torch.xpu.memory_stats()
 
 def load_model_and_tokenizer(model_path):
     model = AutoModelForCausalLM.from_pretrained(model_path,
@@ -27,10 +30,9 @@ class RequestData(BaseModel):
     user_prompt: str
     max_tokens: int = 1024  # Default max tokens to predict
 
-@app.post("/generate-response/")
+@app.post("/generate-response_1.5b/")
 async def generate_response(data: RequestData):
     # Clear memory before processing the request
-    torch.xpu.empty_cache()
     
     messages = [
         {"role": "system", "content": data.system_setting},
@@ -71,5 +73,39 @@ async def generate_response(data: RequestData):
             "used": mem_info.used,
             "free": mem_info.free
         },
-        "xpu_memory_usage": xpu_memory_info
+        "xpu_memory_usage": {
+            "initial_used_memory": initial_xpu_memory_info['used_memory'] / (1024 ** 2),  # Convert to MB
+            "initial_free_memory": initial_xpu_memory_info['free_memory'] / (1024 ** 2),  # Convert to MB
+            "initial_total_memory": initial_xpu_memory_info['total_memory'] / (1024 ** 2),  # Convert to MB
+            "current_used_memory": xpu_memory_info['used_memory'] / (1024 ** 2),  # Convert to MB
+            "current_free_memory": xpu_memory_info['free_memory'] / (1024 ** 2),  # Convert to MB
+            "current_total_memory": xpu_memory_info['total_memory'] / (1024 ** 2),  # Convert to MB
+            "unit": "MB"
+        },
+        "xpu_loaded": torch.xpu.is_available()
     }
+
+@app.get("/memory-usage/")
+async def memory_usage():
+    mem_info = psutil.virtual_memory()
+    xpu_memory_info = torch.xpu.memory_stats()
+    return {
+        "memory_usage": {
+            "total": mem_info.total,
+            "available": mem_info.available,
+            "percent": mem_info.percent,
+            "used": mem_info.used,
+            "free": mem_info.free
+        },
+        "xpu_memory_usage": {
+            "initial_used_memory": initial_xpu_memory_info['used_memory'] / (1024 ** 2),  # Convert to MB
+            "initial_free_memory": initial_xpu_memory_info['free_memory'] / (1024 ** 2),  # Convert to MB
+            "initial_total_memory": initial_xpu_memory_info['total_memory'] / (1024 ** 2),  # Convert to MB
+            "current_used_memory": xpu_memory_info['used_memory'] / (1024 ** 2),  # Convert to MB
+            "current_free_memory": xpu_memory_info['free_memory'] / (1024 ** 2),  # Convert to MB
+            "current_total_memory": xpu_memory_info['total_memory'] / (1024 ** 2),  # Convert to MB
+            "unit": "MB"
+        },
+        "xpu_loaded": torch.xpu.is_available()
+    }
+

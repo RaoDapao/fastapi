@@ -5,7 +5,7 @@ import os
 class ApiClient:
     def __init__(self, base_url):
         self.base_url = base_url
-        self.endpoint = "/generate-response/"
+        self.endpoint = "/generate-response_1.5b/"
     
     def generate_response(self, system_setting, user_prompt, max_tokens=1000):
         url = self.base_url + self.endpoint
