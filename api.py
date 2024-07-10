@@ -22,14 +22,15 @@ def load_model_and_tokenizer(model_path):
         optimize_model=True,
         trust_remote_code=True,
         use_cache=True, 
-        device_map="auto",
         max_memory={0: "15GB"},  # 为 XPU 设置最大内存使用量    
     ).to("xpu")
     print("Model loaded.")  # Debug print
+    print(model)
     tokenizer = AutoTokenizer.from_pretrained(
         model_path, 
         trust_remote_code=True,  
     )
+    print(tokenizer)
     print("Tokenizer loaded.")  # Debug print
     return model, tokenizer
 
@@ -59,13 +60,10 @@ async def generate_response(data: RequestData):
     print("Model inputs prepared and moved to XPU.")  # Debug print
     
     # Warmup generation
-    try:
-        print("Starting warmup generation...")  # Debug print
-        model.generate(model_inputs.input_ids, max_new_tokens=data.max_tokens)
-        print("Warmup generation done.")  # Debug print
-    except Exception as e:
-        print("Error during warmup generation: ", str(e))  # Debug print
-        raise HTTPException(status_code=500, detail="Warmup generation failed: " + str(e))
+    print("Starting warmup generation...")  # Debug print
+    model.generate(model_inputs.input_ids, max_new_tokens=data.max_tokens)
+    print("Warmup generation done.")  # Debug print
+
 
     # Actual generation with timing
     try:
