@@ -8,7 +8,7 @@ import psutil
 import os
 
 # Disable integrated GPU
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 app = FastAPI()
 
