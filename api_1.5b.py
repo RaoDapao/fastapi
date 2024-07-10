@@ -9,12 +9,12 @@ import psutil
 app = FastAPI()
 
 # Load model and tokenizer at startup
-model_path = "/home/qwen_intel/code/models/qwen2"
+model_path = "/home/qwen_intel/code/models/Qwen2-1.5B-Instruct-FP8"
 
 def load_model_and_tokenizer(model_path):
     model = AutoModelForCausalLM.from_pretrained(model_path,
                                                  load_in_4bit=True,
-                                                 optimize_model=False,
+                                                 optimize_model=True,
                                                  trust_remote_code=True,
                                                  use_cache=True).to("xpu")
     tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
