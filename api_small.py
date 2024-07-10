@@ -18,7 +18,6 @@ model_path = "/home/qwen_intel/code/models/Qwen2-1.5B-Instruct-FP8"
 def load_model_and_tokenizer(model_path):
     model = AutoModelForCausalLM.from_pretrained(
         model_path,
-        load_in_4bit=True,
         optimize_model=True,
         trust_remote_code=True,
         use_cache=True,
