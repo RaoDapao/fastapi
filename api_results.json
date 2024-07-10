@@ -1,20 +1,40 @@
 {
-    "inference_time": "0.19 s",
+    "inference_time": "0.18 s",
     "response": "你好！有什么我可以帮助你的吗？",
-    "input_tokens": 24
+    "input_tokens": 19
 }
 {
-    "inference_time": "0.21 s",
+    "inference_time": "0.19 s",
     "response": "你好！有什么我可以帮助你的吗？",
-    "input_tokens": 35
+    "input_tokens": 25
+}
+{
+    "inference_time": "0.20 s",
+    "response": "您好！有什么我可以帮助您的吗？",
+    "input_tokens": 31
+}
+{
+    "inference_time": "0.46 s",
+    "response": "你好！有什么我可以帮助你的吗？请告诉我你的问题或需要的信息。我会尽力提供支持和解答。",
+    "input_tokens": 37
+}
+{
+    "inference_time": "0.22 s",
+    "response": "您好！有什么我可以帮助您的吗？",
+    "input_tokens": 43
 }
 {
     "inference_time": "0.23 s",
-    "response": "你好！有什么我可以帮助你的吗？",
-    "input_tokens": 46
+    "response": "您好！有什么我可以帮助您的吗？",
+    "input_tokens": 49
 }
 {
     "inference_time": "0.24 s",
-    "response": "您好！有什么我能帮助您的吗？",
-    "input_tokens": 57
+    "response": "你好！有什么我可以帮助你的吗？",
+    "input_tokens": 55
+}
+{
+    "inference_time": "0.24 s",
+    "response": "你好！有什么可以帮助你的吗？",
+    "input_tokens": 61
 }
