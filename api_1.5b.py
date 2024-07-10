@@ -8,12 +8,12 @@ import psutil
 import os
 
 # Disable integrated GPU
-os.environ["USE_XETLA"] = "OFF"
+
 
 app = FastAPI()
 
 # Load model and tokenizer at startup
-model_path = "/home/qwen_intel/code/models/qwen2"
+model_path = "/home/qwen_intel/code/models/Qwen2-1.5B-Instruct-FP8"
 
 def load_model_and_tokenizer(model_path):
     model = AutoModelForCausalLM.from_pretrained(
