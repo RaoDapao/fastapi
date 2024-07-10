@@ -27,45 +27,16 @@ class ApiClient:
             print(f"Other error occurred: {err}")  # 其他错误
             return None
 
-def format_memory_size(size_in_bytes):
-    for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
-        if size_in_bytes < 1024:
-            return f"{size_in_bytes:.2f} {unit}"
-        size_in_bytes /= 1024
-    return f"{size_in_bytes:.2f} PB"
-
-def format_memory_info(memory_info):
-    return {
-        "used_memory": format_memory_size(memory_info["used_memory"]),
-        "free_memory": format_memory_size(memory_info["free_memory"]),
-        "total_memory": format_memory_size(memory_info["total_memory"]),
-        "unit": "MB"
-    }
-
 def print_and_store_result(result, output_file):
-    initial_memory = format_memory_info(result['xpu_memory_usage']['initial'])
-    current_memory = format_memory_info(result['xpu_memory_usage']['current'])
-
     output_data = {
         "inference_time": f"{result['inference_time']:.2f} s",
         "response": result['response'],
         "input_tokens": result['input_tokens'],
-        "memory_usage": {
-            "total": format_memory_size(result['memory_usage']['total']),
-            "available": format_memory_size(result['memory_usage']['available']),
-            "percent": f"{result['memory_usage']['percent']}%",
-            "used": format_memory_size(result['memory_usage']['used']),
-            "free": format_memory_size(result['memory_usage']['free'])
-        },
-        "xpu_memory_usage": {
-            "initial": initial_memory,
-            "current": current_memory
-        },
-        "xpu_loaded": result["xpu_loaded"]
     }
     
     with open(output_file, 'a') as f:
-        f.write(json.dumps(output_data, ensure_ascii=False, indent=4) + '\n')
+        json.dump(output_data, f, ensure_ascii=False, indent=4)
+        f.write('\n')
     
     print(json.dumps(output_data, ensure_ascii=False, indent=4))
 
@@ -84,7 +55,7 @@ if __name__ == "__main__":
     
     # 调用API并获取响应
     for i in range(1, 8):
-        result = client.generate_response(system_setting * i, user_prompt * i, max_tokens * i)
+        result = client.generate_response(system_setting * 100*i, user_prompt * i, max_tokens * i)
         
         if result:
             print_and_store_result(result, output_file)

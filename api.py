@@ -2,8 +2,7 @@ import torch
 import time
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from transformers import AutoTokenizer
-from ipex_llm.transformers import AutoModelForCausalLM
+from transformers import AutoTokenizer, AutoModelForCausalLM
 import psutil
 
 app = FastAPI()
@@ -15,12 +14,20 @@ preload_xpu_memory_info = torch.xpu.memory_stats()
 model_path = "/home/qwen_intel/code/models/qwen2"
 
 def load_model_and_tokenizer(model_path):
+    # Step 1: Load pre-trained model
     model = AutoModelForCausalLM.from_pretrained(model_path,
                                                  load_in_4bit=True,
                                                  optimize_model=True,
                                                  trust_remote_code=True,
                                                  use_cache=True).to("xpu")
     tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
+    
+    # Step 2: Create custom embedding layer (example: same size as original)
+    custom_embedding = torch.nn.Embedding(model.config.vocab_size, model.config.hidden_size).to("xpu")
+    
+    # Step 3: Replace the model's embedding layer
+    model.get_input_embeddings = lambda: custom_embedding
+    
     return model, tokenizer
 
 model, tokenizer = load_model_and_tokenizer(model_path)
@@ -32,8 +39,6 @@ class RequestData(BaseModel):
 
 @app.post("/generate-response_1.5b/")
 async def generate_response(data: RequestData):
-    # Clear memory before processing the request
-    
     messages = [
         {"role": "system", "content": data.system_setting},
         {"role": "user", "content": data.user_prompt}
@@ -48,7 +53,7 @@ async def generate_response(data: RequestData):
     # Actual generation with timing
     st = time.time()
     generated_ids = model.generate(model_inputs.input_ids, max_new_tokens=data.max_tokens)
-    torch.xpu.synchronize()
+    torch.xpu.synchronize()  # 同步XPU
     end = time.time()
 
     generated_ids = generated_ids.cpu()
