@@ -46,7 +46,7 @@ if __name__ == "__main__":
     
     # 定义请求参数
     system_setting = "我"
-    user_prompt = '你'
+    user_prompt = '你他死了吗？'
     max_tokens = 206
     output_file = "api_results.json"
 
@@ -55,7 +55,7 @@ if __name__ == "__main__":
     
     # 调用API并获取响应
     for i in range(1, 111):
-        result = client.generate_response(system_setting * 5*i, user_prompt * i, max_tokens * i)
+        result = client.generate_response(system_setting *i, user_prompt * i, max_tokens * i)
         
         if result:
             print_and_store_result(result, output_file)

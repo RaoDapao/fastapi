@@ -8,7 +8,7 @@ import psutil
 import os
 
 # Disable integrated GPU
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["USE_XETLA"] = "OFF"
 
 app = FastAPI()
 
@@ -16,12 +16,19 @@ app = FastAPI()
 model_path = "/home/qwen_intel/code/models/qwen2"
 
 def load_model_and_tokenizer(model_path):
-    model = AutoModelForCausalLM.from_pretrained(model_path,
-                                                 load_in_4bit=True,
-                                                 optimize_model=True,
-                                                 trust_remote_code=True,
-                                                 use_cache=True,replace_embedding=True).to("xpu")
-    tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True,replace_embedding=True)
+    model = AutoModelForCausalLM.from_pretrained(
+        model_path,
+        load_in_4bit=True,
+        optimize_model=True,
+        trust_remote_code=True,
+        use_cache=True,
+        cpu_embedding=True  # replace replace_embedding with cpu_embedding
+    ).to("xpu")
+    tokenizer = AutoTokenizer.from_pretrained(
+        model_path, 
+        trust_remote_code=True,
+        cpu_embedding=True  # replace replace_embedding with cpu_embedding
+    )
     return model, tokenizer
 
 model, tokenizer = load_model_and_tokenizer(model_path)
@@ -81,3 +88,4 @@ async def generate_response(data: RequestData):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
