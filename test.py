@@ -54,7 +54,7 @@ if __name__ == "__main__":
         os.remove(output_file)  # 删除现有文件，以便每次运行时创建一个新文件
     
     # 调用API并获取响应
-    for i in range(1, 111):
+    for i in range(17, 18):
         result = client.generate_response(system_setting *10*i, user_prompt * i, max_tokens * i)
         
         if result:

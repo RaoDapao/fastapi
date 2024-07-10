@@ -13,6 +13,7 @@ app = FastAPI()
 model_path = "/home/qwen_intel/code/models/qwen2"
 
 def load_model_and_tokenizer(model_path):
+    print("Loading model and tokenizer...")  # Debug print
     model = AutoModelForCausalLM.from_pretrained(
         model_path,
         load_in_4bit=True,
@@ -20,13 +21,17 @@ def load_model_and_tokenizer(model_path):
         trust_remote_code=True,
         use_cache=True, # replace replace_embedding with cpu_embedding
     ).to("xpu")
+    print("Model loaded.")  # Debug print
     tokenizer = AutoTokenizer.from_pretrained(
         model_path, 
         trust_remote_code=True,  # replace replace_embedding with cpu_embedding
     )
+    print("Tokenizer loaded.")  # Debug print
     return model, tokenizer
 
+print("Starting up and loading model/tokenizer...")  # Debug print
 model, tokenizer = load_model_and_tokenizer(model_path)
+print("Model and tokenizer loaded at startup.")  # Debug print
 
 class RequestData(BaseModel):
     system_setting: str
@@ -35,24 +40,31 @@ class RequestData(BaseModel):
 
 @app.post("/generate-response_1.5b/")
 async def generate_response(data: RequestData):
-    # Clear memory before processing the request
+    print("Received request.")  # Debug print
     
     messages = [
         {"role": "system", "content": data.system_setting},
         {"role": "user", "content": data.user_prompt}
     ]
+    print("Messages prepared: ", messages)  # Debug print
 
     text = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+    print("Text after applying chat template: ", text)  # Debug print
     model_inputs = tokenizer([text], return_tensors="pt").to("xpu")
+    print("Model inputs prepared and moved to XPU.")  # Debug print
     
     # Warmup generation
+    print("Starting warmup generation...")  # Debug print
     model.generate(model_inputs.input_ids, max_new_tokens=data.max_tokens)
+    print("Warmup generation done.")  # Debug print
 
     # Actual generation with timing
+    print("Starting actual generation...")  # Debug print
     st = time.time()
     generated_ids = model.generate(model_inputs.input_ids, max_new_tokens=data.max_tokens)
     torch.xpu.synchronize()
     end = time.time()
+    print("Generation done.")  # Debug print
 
     generated_ids = generated_ids.cpu()
     generated_ids = [
@@ -64,6 +76,11 @@ async def generate_response(data: RequestData):
     # Monitor memory usage
     mem_info = psutil.virtual_memory()
     xpu_memory_info = torch.xpu.memory_stats()
+    
+    print("Response generated.")  # Debug print
+    print("Inference time: ", inference_time)  # Debug print
+    print("Memory usage: ", mem_info)  # Debug print
+    print("XPU memory usage: ", xpu_memory_info)  # Debug print
 
     return {
         "inference_time": inference_time,
@@ -81,6 +98,9 @@ async def generate_response(data: RequestData):
 
 # Run the app
 if __name__ == "__main__":
+    print("Starting the app...")  # Debug print
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
+    print("App is running.")  # Debug print
+
 
