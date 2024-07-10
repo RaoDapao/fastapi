@@ -47,15 +47,15 @@ if __name__ == "__main__":
     # 定义请求参数
     system_setting = "我"
     user_prompt = '你'
-    max_tokens = 206
+    max_tokens = 20000
     output_file = "api_results.json"
 
     if os.path.exists(output_file):
         os.remove(output_file)  # 删除现有文件，以便每次运行时创建一个新文件
     
     # 调用API并获取响应
-    for i in range(1, 3):
-        result = client.generate_response('扮演一名非常好的历史教授，讲解历史事件时候，例子丰富，来龙去脉娓娓道来','1989 6 4 发生的大事情' , max_tokens * i)
+    for i in range(1, 2):
+        result = client.generate_response('扮演一名非常好的历史教授，讲解历史事件时候，例子丰富，来龙去脉娓娓道来','法国大革命的前因后果法国大革命的前因后果法国大革命的前因后果法国大革命的前因后果法国大革命的前因后果法国大革命的前因后果法国大革命的前因后果法国大革命的前因后果法国大革命的前因后果法国大革命的前因后果法国大革命的前因后果' , max_tokens * i)
         
         if result:
             print_and_store_result(result, output_file)

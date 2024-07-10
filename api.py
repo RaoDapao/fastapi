@@ -6,39 +6,42 @@ from transformers import AutoTokenizer
 from ipex_llm.transformers import AutoModelForCausalLM
 import psutil
 import os
+import logging
 
 app = FastAPI()
+
+# Setup logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 # Load model and tokenizer at startup
 model_path = "/home/qwen_intel/code/models/qwen2"
 
-
-
 def load_model_and_tokenizer(model_path):
-    print("Loading model and tokenizer...")  # Debug print
+    logger.info("Loading model and tokenizer...")
     model = AutoModelForCausalLM.from_pretrained(
         model_path,
         load_in_4bit=True,
         optimize_model=True,
         trust_remote_code=True,
-        use_cache=True, 
-        max_memory={0: "15GB"},  # 为 XPU 设置最大内存使用量 
+        use_cache=True,
+        max_memory={0: "15GB"},  # 为 XPU 设置最大内存使用量
         torch_dtype=torch.float16
-
     ).to("xpu")
-    print("Model loaded.")  # Debug print
-    print(model)
+    
+    device_name = torch.xpu.get_device_name(0)  # 获取设备型号
+    logger.info(f"Model loaded on XPU: {device_name}")
+    
     tokenizer = AutoTokenizer.from_pretrained(
-        model_path, 
-        trust_remote_code=True,  
+        model_path,
+        trust_remote_code=True,
     )
-    print(tokenizer)
-    print("Tokenizer loaded.")  # Debug print
+    logger.info("Tokenizer loaded.")
     return model, tokenizer
 
-print("Starting up and loading model/tokenizer...")  # Debug print
+logger.info("Starting up and loading model/tokenizer...")
 model, tokenizer = load_model_and_tokenizer(model_path)
-print("Model and tokenizer loaded at startup.")  # Debug print
+logger.info("Model and tokenizer loaded at startup.")
 
 class RequestData(BaseModel):
     system_setting: str
@@ -47,35 +50,33 @@ class RequestData(BaseModel):
 
 @app.post("/generate-response_1.5b/")
 async def generate_response(data: RequestData):
-    print("Received request.")  # Debug print
+    logger.info("Received request.")
     
     messages = [
         {"role": "system", "content": data.system_setting},
         {"role": "user", "content": data.user_prompt}
     ]
-    print("Messages prepared: ", messages)  # Debug print
+    logger.info(f"Messages prepared: {messages}")
 
     text = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-    print("Text after applying chat template: ", text)  # Debug print
-    model_inputs = tokenizer([text], return_tensors="pt",truncation=True, max_length=2000).to("xpu")
-    print("Model inputs prepared: ", model_inputs)  # Debug print
-    print("Model inputs prepared and moved to XPU.")  # Debug print
+    logger.info(f"Text after applying chat template: {text}")
+    model_inputs = tokenizer([text], return_tensors="pt", truncation=True, max_length=2000).to("xpu")
+    logger.info(f"Model inputs prepared and moved to XPU: {model_inputs}")
     
     # Warmup generation
-    print("Starting warmup generation...")  # Debug print
+    logger.info("Starting warmup generation...")
     model.generate(model_inputs.input_ids, max_new_tokens=data.max_tokens)
-    print("Warmup generation done.")  # Debug print
-
+    logger.info("Warmup generation done.")
 
     # Actual generation with timing
     try:
-        print("Starting actual generation...")  # Debug print
+        logger.info("Starting actual generation...")
         
         st = time.time()
         generated_ids = model.generate(model_inputs.input_ids, max_new_tokens=data.max_tokens)
         torch.xpu.synchronize()
         end = time.time()
-        print("Generation done.")  # Debug print
+        logger.info("Generation done.")
 
         generated_ids = generated_ids.cpu()
         generated_ids = [
@@ -88,10 +89,10 @@ async def generate_response(data: RequestData):
         mem_info = psutil.virtual_memory()
         xpu_memory_info = torch.xpu.memory_stats()
         
-        print("Response generated.")  # Debug print
-        print("Inference time: ", inference_time)  # Debug print
-        print("Memory usage: ", mem_info)  # Debug print
-        print("XPU memory usage: ", xpu_memory_info)  # Debug print
+        logger.info("Response generated.")
+        logger.info(f"Inference time: {inference_time}")
+        logger.info(f"Memory usage: {mem_info}")
+        logger.info(f"XPU memory usage: {xpu_memory_info}")
 
         return {
             "inference_time": inference_time,
@@ -106,17 +107,14 @@ async def generate_response(data: RequestData):
             },
             "xpu_memory_usage": xpu_memory_info,
         }
-    
-        
+
     except Exception as e:
-        print("Error during actual generation: ", str(e))  # Debug print
+        logger.error(f"Error during actual generation: {str(e)}")
         raise HTTPException(status_code=500, detail="Generation failed: " + str(e))
 
 # Run the app
 if __name__ == "__main__":
-    print("Starting the app...")  # Debug print
+    logger.info("Starting the app...")
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
-    print("App is running.")  # Debug print
-
-
+    logger.info("App is running.")
