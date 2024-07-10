@@ -55,7 +55,7 @@ if __name__ == "__main__":
     
     # 调用API并获取响应
     for i in range(1, 111):
-        result = client.generate_response(system_setting *100*i, user_prompt * i, max_tokens * i)
+        result = client.generate_response(system_setting *10*i, user_prompt * i, max_tokens * i)
         
         if result:
             print_and_store_result(result, output_file)
