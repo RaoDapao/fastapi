@@ -19,12 +19,13 @@ def load_model_and_tokenizer(model_path):
         load_in_4bit=True,
         optimize_model=True,
         trust_remote_code=True,
-        use_cache=True, # replace replace_embedding with cpu_embedding
+        use_cache=True, 
+        from_flax=True
     ).to("xpu")
     print("Model loaded.")  # Debug print
     tokenizer = AutoTokenizer.from_pretrained(
         model_path, 
-        trust_remote_code=True,  # replace replace_embedding with cpu_embedding
+        trust_remote_code=True,  
     )
     print("Tokenizer loaded.")  # Debug print
     return model, tokenizer
@@ -54,47 +55,55 @@ async def generate_response(data: RequestData):
     print("Model inputs prepared and moved to XPU.")  # Debug print
     
     # Warmup generation
-    print("Starting warmup generation...")  # Debug print
-    model.generate(model_inputs.input_ids, max_new_tokens=data.max_tokens)
-    print("Warmup generation done.")  # Debug print
+    try:
+        print("Starting warmup generation...")  # Debug print
+        model.generate(model_inputs.input_ids, max_new_tokens=data.max_tokens)
+        print("Warmup generation done.")  # Debug print
+    except Exception as e:
+        print("Error during warmup generation: ", str(e))  # Debug print
+        raise HTTPException(status_code=500, detail="Warmup generation failed: " + str(e))
 
     # Actual generation with timing
-    print("Starting actual generation...")  # Debug print
-    st = time.time()
-    generated_ids = model.generate(model_inputs.input_ids, max_new_tokens=data.max_tokens)
-    torch.xpu.synchronize()
-    end = time.time()
-    print("Generation done.")  # Debug print
+    try:
+        print("Starting actual generation...")  # Debug print
+        st = time.time()
+        generated_ids = model.generate(model_inputs.input_ids, max_new_tokens=data.max_tokens)
+        torch.xpu.synchronize()
+        end = time.time()
+        print("Generation done.")  # Debug print
 
-    generated_ids = generated_ids.cpu()
-    generated_ids = [
-        output_ids[len(input_ids):] for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)
-    ]
-    response = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
-    inference_time = end - st
+        generated_ids = generated_ids.cpu()
+        generated_ids = [
+            output_ids[len(input_ids):] for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)
+        ]
+        response = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
+        inference_time = end - st
 
-    # Monitor memory usage
-    mem_info = psutil.virtual_memory()
-    xpu_memory_info = torch.xpu.memory_stats()
-    
-    print("Response generated.")  # Debug print
-    print("Inference time: ", inference_time)  # Debug print
-    print("Memory usage: ", mem_info)  # Debug print
-    print("XPU memory usage: ", xpu_memory_info)  # Debug print
+        # Monitor memory usage
+        mem_info = psutil.virtual_memory()
+        xpu_memory_info = torch.xpu.memory_stats()
+        
+        print("Response generated.")  # Debug print
+        print("Inference time: ", inference_time)  # Debug print
+        print("Memory usage: ", mem_info)  # Debug print
+        print("XPU memory usage: ", xpu_memory_info)  # Debug print
 
-    return {
-        "inference_time": inference_time,
-        "response": response,
-        "input_tokens": len(model_inputs.input_ids[0]),
-        "memory_usage": {
-            "total": mem_info.total,
-            "available": mem_info.available,
-            "percent": mem_info.percent,
-            "used": mem_info.used,
-            "free": mem_info.free
-        },
-        "xpu_memory_usage": xpu_memory_info,
-    }
+        return {
+            "inference_time": inference_time,
+            "response": response,
+            "input_tokens": len(model_inputs.input_ids[0]),
+            "memory_usage": {
+                "total": mem_info.total,
+                "available": mem_info.available,
+                "percent": mem_info.percent,
+                "used": mem_info.used,
+                "free": mem_info.free
+            },
+            "xpu_memory_usage": xpu_memory_info,
+        }
+    except Exception as e:
+        print("Error during actual generation: ", str(e))  # Debug print
+        raise HTTPException(status_code=500, detail="Generation failed: " + str(e))
 
 # Run the app
 if __name__ == "__main__":
