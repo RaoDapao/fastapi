@@ -18,11 +18,13 @@ def load_model_and_tokenizer(model_path):
     print("Loading model and tokenizer...")  # Debug print
     model = AutoModelForCausalLM.from_pretrained(
         model_path,
-        load_in_8bit=True,
+        load_in_4bit=True,
         optimize_model=True,
         trust_remote_code=True,
         use_cache=True, 
-        max_memory={0: "15GB"},  # 为 XPU 设置最大内存使用量    
+        max_memory={0: "15GB"},  # 为 XPU 设置最大内存使用量 
+        torch_dtype=torch.float16
+
     ).to("xpu")
     print("Model loaded.")  # Debug print
     print(model)

@@ -55,7 +55,7 @@ if __name__ == "__main__":
     
     # 调用API并获取响应
     for i in range(1, 3):
-        result = client.generate_response(system_setting *(190+i),'1989 6 4 发生的大事情' , max_tokens * i)
+        result = client.generate_response('扮演一名非常好的历史教授，讲解历史事件时候，例子丰富，来龙去脉娓娓道来','1989 6 4 发生的大事情' , max_tokens * i)
         
         if result:
             print_and_store_result(result, output_file)
