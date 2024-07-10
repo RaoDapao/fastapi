@@ -54,7 +54,8 @@ async def generate_response(data: RequestData):
 
     text = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
     print("Text after applying chat template: ", text)  # Debug print
-    model_inputs = tokenizer([text], return_tensors="pt").to("xpu")
+    model_inputs = tokenizer([text], return_tensors="pt",truncation=True, max_length=2000).to("xpu")
+    print("Model inputs prepared: ", model_inputs)  # Debug print
     print("Model inputs prepared and moved to XPU.")  # Debug print
     
     # Warmup generation
@@ -69,7 +70,7 @@ async def generate_response(data: RequestData):
     # Actual generation with timing
     try:
         print("Starting actual generation...")  # Debug print
-        torch.xpu.empty_cache()
+        
         st = time.time()
         generated_ids = model.generate(model_inputs.input_ids, max_new_tokens=data.max_tokens)
         torch.xpu.synchronize()
