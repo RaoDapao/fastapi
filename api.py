@@ -62,6 +62,10 @@ async def generate_response(data: RequestData):
     mem_info = psutil.virtual_memory()
     xpu_memory_info = torch.xpu.memory_stats()
 
+    # Handle possible missing keys
+    def get_memory_stat(info, key):
+        return info.get(key, 0) / (1024 ** 2)  # Convert to MB
+
     return {
         "inference_time": inference_time,
         "response": response,
@@ -74,12 +78,12 @@ async def generate_response(data: RequestData):
             "free": mem_info.free
         },
         "xpu_memory_usage": {
-            "initial_used_memory": initial_xpu_memory_info['used_memory'] / (1024 ** 2),  # Convert to MB
-            "initial_free_memory": initial_xpu_memory_info['free_memory'] / (1024 ** 2),  # Convert to MB
-            "initial_total_memory": initial_xpu_memory_info['total_memory'] / (1024 ** 2),  # Convert to MB
-            "current_used_memory": xpu_memory_info['used_memory'] / (1024 ** 2),  # Convert to MB
-            "current_free_memory": xpu_memory_info['free_memory'] / (1024 ** 2),  # Convert to MB
-            "current_total_memory": xpu_memory_info['total_memory'] / (1024 ** 2),  # Convert to MB
+            "initial_used_memory": get_memory_stat(initial_xpu_memory_info, 'used_memory'),
+            "initial_free_memory": get_memory_stat(initial_xpu_memory_info, 'free_memory'),
+            "initial_total_memory": get_memory_stat(initial_xpu_memory_info, 'total_memory'),
+            "current_used_memory": get_memory_stat(xpu_memory_info, 'used_memory'),
+            "current_free_memory": get_memory_stat(xpu_memory_info, 'free_memory'),
+            "current_total_memory": get_memory_stat(xpu_memory_info, 'total_memory'),
             "unit": "MB"
         },
         "xpu_loaded": torch.xpu.is_available()
@@ -89,6 +93,11 @@ async def generate_response(data: RequestData):
 async def memory_usage():
     mem_info = psutil.virtual_memory()
     xpu_memory_info = torch.xpu.memory_stats()
+
+    # Handle possible missing keys
+    def get_memory_stat(info, key):
+        return info.get(key, 0) / (1024 ** 2)  # Convert to MB
+
     return {
         "memory_usage": {
             "total": mem_info.total,
@@ -98,14 +107,13 @@ async def memory_usage():
             "free": mem_info.free
         },
         "xpu_memory_usage": {
-            "initial_used_memory": initial_xpu_memory_info['used_memory'] / (1024 ** 2),  # Convert to MB
-            "initial_free_memory": initial_xpu_memory_info['free_memory'] / (1024 ** 2),  # Convert to MB
-            "initial_total_memory": initial_xpu_memory_info['total_memory'] / (1024 ** 2),  # Convert to MB
-            "current_used_memory": xpu_memory_info['used_memory'] / (1024 ** 2),  # Convert to MB
-            "current_free_memory": xpu_memory_info['free_memory'] / (1024 ** 2),  # Convert to MB
-            "current_total_memory": xpu_memory_info['total_memory'] / (1024 ** 2),  # Convert to MB
+            "initial_used_memory": get_memory_stat(initial_xpu_memory_info, 'used_memory'),
+            "initial_free_memory": get_memory_stat(initial_xpu_memory_info, 'free_memory'),
+            "initial_total_memory": get_memory_stat(initial_xpu_memory_info, 'total_memory'),
+            "current_used_memory": get_memory_stat(xpu_memory_info, 'used_memory'),
+            "current_free_memory": get_memory_stat(xpu_memory_info, 'free_memory'),
+            "current_total_memory": get_memory_stat(xpu_memory_info, 'total_memory'),
             "unit": "MB"
         },
         "xpu_loaded": torch.xpu.is_available()
     }
-

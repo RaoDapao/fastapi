@@ -34,20 +34,17 @@ def format_memory_size(size_in_bytes):
         size_in_bytes /= 1024
     return f"{size_in_bytes:.2f} PB"
 
+def format_memory_info(memory_info):
+    return {
+        "used_memory": format_memory_size(memory_info["used_memory"]),
+        "free_memory": format_memory_size(memory_info["free_memory"]),
+        "total_memory": format_memory_size(memory_info["total_memory"]),
+        "unit": "MB"
+    }
+
 def print_and_store_result(result, output_file):
-    def format_memory_info(memory_info):
-        return {
-            "total_memory": format_memory_size(memory_info["total_memory"]),
-            "available_memory": format_memory_size(memory_info["available_memory"]),
-            "allocated_current": format_memory_size(memory_info["memory_stats"].get("allocated_bytes.all.current", 0)),
-            "allocated_peak": format_memory_size(memory_info["memory_stats"].get("allocated_bytes.all.peak", 0))
-        }
-    
-    initial_memory = format_memory_info(result['xpu_memory_usage_initial'])
-    warmup_memory = format_memory_info(result['xpu_memory_usage_warmup'])
-    before_generation_memory = format_memory_info(result['xpu_memory_usage_before_generation'])
-    after_generation_memory = format_memory_info(result['xpu_memory_usage_after_generation'])
-    final_memory = format_memory_info(result['xpu_memory_usage_final'])
+    initial_memory = format_memory_info(result['xpu_memory_usage']['initial'])
+    current_memory = format_memory_info(result['xpu_memory_usage']['current'])
 
     output_data = {
         "inference_time": f"{result['inference_time']:.2f} s",
@@ -62,11 +59,9 @@ def print_and_store_result(result, output_file):
         },
         "xpu_memory_usage": {
             "initial": initial_memory,
-            "warmup": warmup_memory,
-            "before_generation": before_generation_memory,
-            "after_generation": after_generation_memory,
-            "final": final_memory
-        }
+            "current": current_memory
+        },
+        "xpu_loaded": result["xpu_loaded"]
     }
     
     with open(output_file, 'a') as f:
@@ -88,8 +83,8 @@ if __name__ == "__main__":
         os.remove(output_file)  # 删除现有文件，以便每次运行时创建一个新文件
     
     # 调用API并获取响应
-    for i in range(7):
-        result = client.generate_response(system_setting*1*i, user_prompt*1*i, max_tokens*i)
+    for i in range(1, 8):
+        result = client.generate_response(system_setting * i, user_prompt * i, max_tokens * i)
         
         if result:
             print_and_store_result(result, output_file)
