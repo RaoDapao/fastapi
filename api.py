@@ -196,21 +196,24 @@ async def summarizer_server_v2(texts=Form(default=None),
 async def retrieve_summarizer_v2(request: RetrieveRequest):
     logger.info(f"Received retrieve request: {request}")
     meeting_ids = json.loads(request.meeting_ids)
-    response = []
-    with get_db_connection() as conn:
-        cursor = conn.cursor()
-        for mid in meeting_ids:
-            cursor.execute('SELECT result FROM summaries WHERE meeting_id = ?', (mid,))
-            row = cursor.fetchone()
-            if row:
-                resp = json.loads(row[0])
-                response.append(resp)
-            else:
-                response.append({"meeting_id": mid, "result": None, "stop": True})
-        conn.commit()
+    response = [] 
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            for mid in meeting_ids:
+                cursor.execute('SELECT result FROM summaries WHERE meeting_id = ?', (mid,))
+                row = cursor.fetchone()
+                if row:
+                    resp = json.loads(row[0])
+                    response.append(resp)
+                    cursor.execute('DELETE FROM summaries WHERE meeting_id = ?', (mid,))
+                else:
+                    response.append({"meeting_id": mid, "result": None, "stop": True})
+            conn.commit()
+    except sqlite3.Error as e:
+        logger.error(f"Database error: {e}")
     logger.info(f"Retrieve response: {response}")
     return jsonable_encoder(response)
-
 port = 8000
 
 app = FastAPI()
