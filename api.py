@@ -28,6 +28,8 @@ def get_db_connection():
     return conn
 
 def initialize_db():
+    # Ensure the directory exists
+    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
     with get_db_connection() as conn:
         cursor = conn.cursor()
         cursor.execute('''
@@ -84,7 +86,7 @@ class RetrieveRequest(BaseModel):
     meeting_ids: Any = None
 
 def call_api(messages):
-    url = "http://192.168.10.61:8001/v1/chat/completions"
+    url = "http://localhost:8001/v1/chat/completions"
     data = {
         "model": "qwen2_7b_instruct",
         "messages": messages,
