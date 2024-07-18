@@ -21,7 +21,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # SQLite setup
-DB_PATH = os.path.join('data', 'summarizer.db')
+DB_PATH = os.path.join('/data', 'summarizer.db')
 
 def get_db_connection():
     conn = sqlite3.connect(DB_PATH)
