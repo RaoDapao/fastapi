@@ -1,32 +1,57 @@
 import asyncio
-from fastapi import APIRouter, UploadFile, File, Form, Body, Depends, Query
+from fastapi import APIRouter, UploadFile, File, Form, FastAPI
 from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
-from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 from pydantic import BaseModel
-from typing import Optional, Union, Dict, Any, List
+from typing import Union, Any
 import json
-from langchain.text_splitter import CharacterTextSplitter, RecursiveCharacterTextSplitter
+from langchain.text_splitter import CharacterTextSplitter
 from threading import Thread
 import requests
 import re
 import ast
 import logging
+import sqlite3
+import os
 
-# 配置日志
+# Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# SQLite setup
+DB_PATH = os.path.join('data', 'summarizer.db')
+
+def get_db_connection():
+    conn = sqlite3.connect(DB_PATH)
+    return conn
+
+def initialize_db():
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS summaries (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                meeting_id TEXT UNIQUE,
+                result TEXT,
+                topic TEXT,
+                content TEXT,
+                status INTEGER,
+                msg TEXT
+            )
+        ''')
+        conn.commit()
+
+initialize_db()
+
+# Text splitter setup
 text_splitter = CharacterTextSplitter(
     separator="。",
     chunk_size=5000,
     chunk_overlap=0,
     length_function=len,
 )
-
-storage = {}
 
 prompt_1 = """针对<正文>内容，撰写总结摘要。
 要求：
@@ -59,7 +84,7 @@ class RetrieveRequest(BaseModel):
     meeting_ids: Any = None
 
 def call_api(messages):
-    url = "http://localhost:8001/v1/chat/completions"
+    url = "http://192.168.10.61:8001/v1/chat/completions"
     data = {
         "model": "qwen2_7b_instruct",
         "messages": messages,
@@ -69,6 +94,18 @@ def call_api(messages):
     }
     response = requests.post(url, headers=headers, json=data)
     return response.json()
+
+def save_summary_to_db(meeting_id, result, topic, content):
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                INSERT OR REPLACE INTO summaries (meeting_id, result, topic, content, status, msg) 
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', (meeting_id, json.dumps(result), topic, content, 200, "succeed"))
+            conn.commit()
+    except Exception as e:
+        logger.error(f"Error saving summary to database: {e}")
 
 def async_summarizer(text_list, m_id, _revoke_url):
     l = len(text_list) - 1
@@ -81,9 +118,9 @@ def async_summarizer(text_list, m_id, _revoke_url):
             text_with_prompt = line + "\n" + answer
         response = call_api([
             {"role": "user", "content": text_with_prompt},
-            {"role": "system", "content": "不要有重复内容，同时尽可能详细准确，序号标对"}
+            {"role": "system", "content": "不要有重复内容，同时尽可能准确，不要出现无关内容，序号标对"}
         ])
-        answer =response.get('choices', [{}])[0].get('message', {}).get('content', '')
+        answer = response.get('choices', [{}])[0].get('message', {}).get('content', '')
         if i == l:
             res = answer
     result = {}
@@ -105,7 +142,7 @@ def async_summarizer(text_list, m_id, _revoke_url):
     logger.info(f"Result: {result}")
     if _revoke_url:
         requests.post(url=_revoke_url, json=jsonable_encoder(result))
-    storage[f"summ_v2_{m_id}"] = result
+    save_summary_to_db(m_id, result, topic, content)
     return result
 
 async def async_task(text_list, m_id, _revoke_url):
@@ -145,78 +182,30 @@ async def summarizer_server_v2(texts=Form(default=None),
     logger.info(f"Final texts: {texts}, meeting_id: {m_id}, revoke_url: {_revoke_url}")
 
     text_list = text_splitter.split_text(texts)
-    l = len(text_list) - 1
-    answer = ''
-    res = ''
     if async_request:
         t = Thread(target=async_summarizer, args=(text_list, m_id, _revoke_url))
         t.start()
         return {"meeting_id": m_id}
     else:
-        for i, line in enumerate(text_list):
-            if answer == '':
-                text_with_prompt = prompt_1.replace("{text}", line)
-            else:
-                text_with_prompt = prompt_2.replace("{text}", line).replace("{existing_answer}", answer)
-
-            answer =call_api([
-                {"role": "user", "content": text_with_prompt},
-                {"role": "system", "content": "不要有重复内容，同时尽可能详细准确，序号标对"}
-            ]).get('choices', [{}])[0].get('message', {}).get('content', '')
-            if i == l:
-                res = answer
-        result = {}
-        try:
-            topic = res.split('\n')[0]
-            content = '\n'.join(res.split('\n')[1:])
-        except:
-            topic = ''
-            content = res
-        tmp_topic = re.split(r'[:：]', topic)
-        if len(tmp_topic) >= 1:
-            topic = '：'.join(re.split(r'[:：]', topic)[1:])
-        result['result'] = f"{res}"
-        result['topic'] = topic
-        result['content'] = content
-        result['msg'] = "succeed"
-        result['status'] = 200
-        result['meeting_id'] = m_id
-        storage[f"summ_v2_{m_id}"] = result
-        logger.info(f"Result: {result}")
-        if _revoke_url:
-            requests.post(url=_revoke_url, json=jsonable_encoder(result))
+        result = await async_task(text_list, m_id, _revoke_url)
         return result
 
 @router.post("/v2/retrieveSummarizer")
 async def retrieve_summarizer_v2(request: RetrieveRequest):
     logger.info(f"Received retrieve request: {request}")
-    logger.info(f"Storage keys: {storage.keys()}")
     meeting_ids = json.loads(request.meeting_ids)
     response = []
-    for mid in meeting_ids:
-        if isinstance(mid, str):
-            if f"summ_v2_{mid}" in storage:
-                resp = storage[f"summ_v2_{mid}"]
-                if not resp.get('msg'):
-                    resp['result'] = None
-                    response.append(resp)
-                else:
-                    response.append(resp)
-                    del storage[f"summ_v2_{mid}"]
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        for mid in meeting_ids:
+            cursor.execute('SELECT result FROM summaries WHERE meeting_id = ?', (mid,))
+            row = cursor.fetchone()
+            if row:
+                resp = json.loads(row[0])
+                response.append(resp)
             else:
                 response.append({"meeting_id": mid, "result": None, "stop": True})
-        else:
-            mid_id = mid['meeting_id']
-            if f"summ_v2_{mid_id}" in storage:
-                resp = storage[f"summ_v2_{mid_id}"]
-                if not resp.get('msg'):
-                    resp['result'] = None
-                    response.append(resp)
-                else:
-                    response.append(resp)
-                    del storage[f"summ_v2_{mid_id}"]
-            else:
-                response.append({"meeting_id": mid_id, "result": None, "stop": True})
+        conn.commit()
     logger.info(f"Retrieve response: {response}")
     return jsonable_encoder(response)
 
@@ -243,9 +232,3 @@ def start_server():
 
 if __name__ == "__main__":
     start_server()
-
-
-
-
-
-
