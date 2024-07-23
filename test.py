@@ -2,7 +2,7 @@ import requests
 import json
 import time
 
-url = "http://192.168.10.61:8001/v1/chat/completions"
+url = "http://192.168.20.180:8001/v1/chat/completions"
 headers = {
     "Content-Type": "application/json"
 }

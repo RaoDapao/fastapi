@@ -59,7 +59,7 @@ class RetrieveRequest(BaseModel):
     meeting_ids: Any = None
 
 def call_api(messages):
-    url = "http://localhost:8001/v1/chat/completions"
+    url = "http://localhost:9503/v1/chat/completions"
     data = {
         "model": "qwen2_7b_instruct",
         "messages": messages,
