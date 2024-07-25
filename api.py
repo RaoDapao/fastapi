@@ -14,7 +14,7 @@ import requests
 import re
 import ast
 import logging
-
+import os
 # 配置日志
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -27,39 +27,61 @@ text_splitter = CharacterTextSplitter(
 )
 
 storage = {}
-
 prompt_1 = """针对<正文>内容，撰写总结摘要。
 要求：
  - 提取正文的主题
  - 理解核心内容，并重新组织语言形成摘要
  - 在摘要内容中，使用序号罗列要点
+ - 每个要点可以选择以下三种格式之一：
+    1. <要点>
+    2. <要点>
+       - 责任人：xxx
+    3. <要点>
+       - 责任人：xxx；时间点：xxxx（如果没有时间信息，则填入“未定”）
  - 使用第三人称
 格式：
     会议主题：<>
     会议要点：
-        1. <>
-        2. <>
-        ...
+        1. <要点>
+        2. <要点>
+           - 责任人：xxx
+        3. <要点>
+           - 责任人：xxx；时间点：xxxx
 正文：
- {text}
+{text}
 摘要内容："""
+
+
 
 prompt_2 = """请根据<现有摘要>和<补充内容>撰写摘要。
 下面是现有摘要：{existing_answer}
 请根据<补充内容>完善现有摘要，形成一份新的摘要。
 请注意，新的摘要也要提供会议主题，并使用序号罗列要点。
+每个要点可以选择以下三种格式之一：
+    1. <要点>
+    2. <要点>
+       - 责任人：xxx
+    3. <要点>
+       - 责任人：xxx；时间点：xxxx（如果没有时间信息，则填入“未定”）
 补充内容如下：
 ------------
 {text}
 ------------
 如果上面的补充内容对撰写摘要没有帮助，则直接返回现有摘要。"""
 
+
+
+
+
 class RetrieveRequest(BaseModel):
     get_type: str = None
     meeting_ids: Any = None
 
 def call_api(messages):
-    url = "http://localhost:9503/v1/chat/completions"
+    # Retrieve the API port from an environment variable
+    api_port = os.getenv('API_PORT', '9503')  # Default to 9503 if the environment variable is not set
+    
+    url = f"http://localhost:{api_port}/v1/chat/completions"
     data = {
         "model": "qwen2_7b_instruct",
         "messages": messages,
@@ -220,7 +242,14 @@ async def retrieve_summarizer_v2(request: RetrieveRequest):
     logger.info(f"Retrieve response: {response}")
     return jsonable_encoder(response)
 
-port = 8000
+
+
+
+
+@router.get("/healthcheck")
+async def healthcheck():
+    return JSONResponse(content={"status": "running"}, status_code=200)
+
 
 app = FastAPI()
 app.add_middleware(
@@ -233,11 +262,21 @@ app.add_middleware(
 
 app.include_router(router)
 
+
+
+
+
+
+
+
+
+
+
 def start_server():
     uvicorn.run(
         "api:app",
         host="0.0.0.0",
-        port=port,
+        port=8000,
         workers=1
     )
 

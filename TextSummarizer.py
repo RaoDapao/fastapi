@@ -536,7 +536,7 @@ if __name__ == "__main__":
 
 
 """
-    base_url = "http://192.168.10.61:8001"
+    base_url = "http://192.168.20.180:9503"
     model_name = "qwen2_7b_instruct"
     api_path = "/v1/chat/completions"
 
